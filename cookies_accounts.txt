@@ -1,4 +1,18 @@
 ---ACCOUNT1---
-[প্রথম account-এর cookies এখানে পেস্ট করুন]
+# Netscape HTTP Cookie File
+# Generated for yt-dlp
+
+.instagram.com	TRUE	/	TRUE	1814521928	datr	XTNGapPF3VGW5ei7S_3edePg
+.instagram.com	TRUE	/	TRUE	1814521928	ig_did	CC4322A7-A62C-47DC-B45C-6B8F24B16125
+.instagram.com	TRUE	/	TRUE	1814521928	dpr	1.875
+.instagram.com	TRUE	/	TRUE	1814521928	mid	akYzXQABAAFC7TvucRcJCaRHuksP
+.instagram.com	TRUE	/	TRUE	1814521928	ps_l	1
+.instagram.com	TRUE	/	TRUE	1814521928	ps_n	1
+.instagram.com	TRUE	/	TRUE	1814521928	csrftoken	0vas8VFAw8U89kxeB040AnQwqUkDBxEw
+.instagram.com	TRUE	/	TRUE	1814521928	ds_user_id	17717109483
+.instagram.com	TRUE	/	TRUE	1814521928	sessionid	17717109483%3AEyDjtNhV8Go1NJ%3A25%3AAYhnSTnU8S_zkK8_nPFX7GoytDSkC_zaLtcA-4bqcw
+.instagram.com	TRUE	/	TRUE	1814521928	wd	384x683
+
 ---ACCOUNT2---
-[দ্বিতীয় account-এর cookies এখানে পেস্ট করুন]
+# আরেকটা account থাকলে এখানে এভাবে যোগ করুন (একই ফরম্যাটে)
+
