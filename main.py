@@ -1,7 +1,6 @@
 """
-Unlimited Video Downloader Backend
-Supports: YouTube, Facebook, Instagram, TikTok, Twitter/X
-Built with FastAPI + yt-dlp (no third-party API, no request limits)
+Instagram Video Downloader Backend
+Built with FastAPI + yt-dlp + cookie rotation (no third-party API)
 """
 
 from fastapi import FastAPI, HTTPException
@@ -10,8 +9,11 @@ from pydantic import BaseModel
 import yt_dlp
 import asyncio
 import functools
+import os
+import re
+import tempfile
 
-app = FastAPI(title="Unlimited Video Downloader API")
+app = FastAPI(title="Instagram Video Downloader API")
 
 # Allow requests from any frontend (adjust in production if you want to restrict)
 app.add_middleware(
@@ -22,6 +24,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ------------------------------------------------------------------
+# Instagram cookie rotation (single file, multiple accounts)
+# ------------------------------------------------------------------
+# All cookies live in one file: cookies_accounts.txt, next to this file.
+# Separate each account's exported cookies.txt content with a line like:
+#   ---ACCOUNT1---
+#   (cookies.txt content for account 1, in standard Netscape format)
+#   ---ACCOUNT2---
+#   (cookies.txt content for account 2)
+#
+# Each request randomly picks one account's cookies to spread load
+# across multiple dummy accounts instead of hammering a single one.
+COOKIES_FILE = os.path.join(os.path.dirname(__file__), "cookies_accounts.txt")
+
+_ACCOUNT_SPLIT_RE = re.compile(r"^---ACCOUNT\d*---\s*$", re.MULTILINE)
+
+
+def load_account_cookie_blocks():
+    """
+    Reads cookies_accounts.txt and splits it into a list of cookie blocks,
+    one per account, based on the ---ACCOUNTx--- markers.
+    """
+    if not os.path.isfile(COOKIES_FILE):
+        return []
+
+    with open(COOKIES_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Split on the marker lines, drop empty leading chunk
+    parts = _ACCOUNT_SPLIT_RE.split(content)
+    blocks = [p.strip() for p in parts if p.strip()]
+    return blocks
+
+
+def get_next_cookiefile_path():
+    """
+    Picks the next account's cookie block in round-robin order
+    (account 1, then 2, then 3... then back to 1), writes it to a
+    temporary file, and returns the path so yt-dlp can use it via
+    the cookiefile option.
+    """
+    blocks = load_account_cookie_blocks()
+    if not blocks:
+        return None
+
+    global _rotation_index
+    index = _rotation_index % len(blocks)
+    _rotation_index = (_rotation_index + 1) % len(blocks)
+
+    chosen = blocks[index]
+
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".txt", delete=False, encoding="utf-8"
+    )
+    tmp.write(chosen)
+    tmp.close()
+    return tmp.name
+
+
+# Tracks which account to use next (round-robin position)
+_rotation_index = 0
+
 
 class VideoRequest(BaseModel):
     url: str
@@ -29,24 +93,29 @@ class VideoRequest(BaseModel):
 
 def extract_info(video_url: str):
     """
-    Runs yt-dlp to extract video info without downloading the file.
-    This works for YouTube, Facebook, Instagram, TikTok, Twitter/X, and
-    hundreds of other sites supported by yt-dlp.
+    Runs yt-dlp to extract Instagram video info without downloading the file.
+    Uses the next account's cookies (round-robin) to bypass Instagram's
+    login-wall for public posts/reels.
     """
     ydl_opts = {
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "format": "best",
-        # Helps avoid some bot-detection issues on YouTube
-        "extractor_args": {
-            "youtube": {"player_client": ["android"]}
-        },
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=False)
-        return info
+    cookie_path = get_next_cookiefile_path()
+    if cookie_path:
+        ydl_opts["cookiefile"] = cookie_path
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+            return info
+    finally:
+        # Clean up the temporary cookie file after use
+        if cookie_path and os.path.exists(cookie_path):
+            os.remove(cookie_path)
 
 
 def build_response(info: dict):
@@ -95,7 +164,7 @@ def build_response(info: dict):
                 "url": f["url"],
             })
     else:
-        # Fallback: single direct url (common for TikTok/Instagram/FB)
+        # Fallback: single direct url (common for Instagram reels/posts)
         if info.get("url"):
             medias.append({
                 "quality": "Default",
@@ -115,7 +184,7 @@ def build_response(info: dict):
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "message": "Video Downloader API is running"}
+    return {"status": "ok", "message": "Instagram Video Downloader API is running"}
 
 
 @app.post("/api/fetch")
@@ -124,6 +193,9 @@ async def fetch_video(request: VideoRequest):
 
     if not video_url:
         raise HTTPException(status_code=400, detail="URL is required")
+
+    if "instagram.com" not in video_url:
+        raise HTTPException(status_code=400, detail="শুধুমাত্র Instagram লিংক সাপোর্ট করা হয়")
 
     try:
         # Run the blocking yt-dlp call in a thread so it doesn't block the event loop
