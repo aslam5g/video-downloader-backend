@@ -142,11 +142,13 @@ def build_response(info: dict):
             vcodec = f.get("vcodec", "none")
             acodec = f.get("acodec", "none")
 
+            # Skip audio-only formats — only show actual video downloads
+            if vcodec == "none":
+                continue
+
             # Build a readable quality label
             if height:
                 quality_label = f"{height}p"
-            elif vcodec == "none" and acodec != "none":
-                quality_label = "Audio Only"
             else:
                 quality_label = f.get("format_note", "Unknown")
 
