@@ -13,6 +13,4 @@
 .instagram.com	TRUE	/	TRUE	1814521928	sessionid	17717109483%3AEyDjtNhV8Go1NJ%3A25%3AAYhnSTnU8S_zkK8_nPFX7GoytDSkC_zaLtcA-4bqcw
 .instagram.com	TRUE	/	TRUE	1814521928	wd	384x683
 
----ACCOUNT2---
-# আরেকটা account থাকলে এখানে এভাবে যোগ করুন (একই ফরম্যাটে)
 
